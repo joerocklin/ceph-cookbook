@@ -91,8 +91,10 @@ else
   # osd/$cluster-$id)
   #  - $cluster should always be ceph
   #  - The --dmcrypt option will be available starting w/ Cuttlefish
+  #  - Set zap_disk to true to zap OSD disks before activation
   if node['ceph']['osd_devices']
     devices = node['ceph']['osd_devices']
+    zap_disk = node['ceph']['zap_disk'] == true ? '--zap-disk' : ''
 
     devices = Hash[(0...devices.size).zip devices] unless devices.kind_of? Hash
 
@@ -112,7 +114,7 @@ else
       dmcrypt = osd_device['encrypted'] == true ? '--dmcrypt' : ''
 
       execute "ceph-disk-prepare on #{osd_device['device']}" do
-        command "ceph-disk-prepare #{dmcrypt} #{osd_device['device']} #{osd_device['journal']}"
+        command "ceph-disk-prepare #{dmcrypt} #{zap_disk} #{osd_device['device']} #{osd_device['journal']}"
         action :run
         notifies :create, "ruby_block[save osd_device status #{index}]", :immediately
       end
