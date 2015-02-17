@@ -22,6 +22,10 @@ node.default['ceph']['is_radosgw'] = true
 include_recipe 'ceph'
 include_recipe 'ceph::radosgw_install'
 
+if node['ceph']['radosgw']['webserver_companion']
+  include_recipe "ceph::radosgw_#{node['ceph']['radosgw']['webserver_companion']}"
+end
+
 directory '/var/log/radosgw' do
   owner node['apache']['user']
   group node['apache']['group']
@@ -39,10 +43,6 @@ directory '/var/run/ceph-radosgw' do
   group node['apache']['group']
   mode '0755'
   action :create
-end
-
-if node['ceph']['radosgw']['webserver_companion']
-  include_recipe "ceph::radosgw_#{node['ceph']['radosgw']['webserver_companion']}"
 end
 
 ceph_client 'radosgw' do
