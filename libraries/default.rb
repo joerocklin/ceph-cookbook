@@ -113,12 +113,16 @@ def mon_addresses
       mon_ips = mons.map { |node| Chef::Recipe::Barclamp::Inventory.get_network_by_type(node, 'admin').address }
     else
       if node['ceph']['config']['global'] && node['ceph']['config']['global']['public network']
-        mon_ips = mons.map { |nodeish| find_node_ip_in_network(node['ceph']['config']['global']['public network'], nodeish) }
+        mon_ips = mons.map { |nodeish|
+          find_node_ip_in_network(node['ceph']['config']['global']['public network'], nodeish)
+        }
       else
         mon_ips = mons.map { |node| node['ipaddress'] + ':6789' }
       end
     end
   end
+  Chef::Log.info "---------- Mon Ips Pre Reject -----------"
+  Chef::Log.info mon_ips
   mon_ips.reject { |m| m.nil? }.uniq
 end
 
@@ -180,4 +184,25 @@ def use_cephx?(type = nil)
     node['ceph']['config']['global'].nil? ||
     node['ceph']['config']['global']["auth #{type} required"].nil? ||
     node['ceph']['config']['global']["auth #{type} required"] == 'cephx'
+end
+
+def device_osd_id(device, cluster)
+  Chef::Log.debug " ---- device_osd_id -----"
+  Chef::Log.debug " device: #{device}"
+  Chef::Log.debug "cluster: #{cluster}"
+
+  ::File.open('/proc/mounts') do |mounts|
+    mounts.each_line do |mount|
+      Chef::Log.debug mount
+      if mount.match(/^#{device}/)
+        mount.match(/#{cluster}-([0-9]+)/) { |i|
+          Chef::Log.debug i
+          Chef::Log.debug i[1]
+          return i[1].to_i
+        }
+      end
+    end
+  end
+  Chef::Log.warn "Unable to determine OSD ID for #{device}"
+  nil
 end

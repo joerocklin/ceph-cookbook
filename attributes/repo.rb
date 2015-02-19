@@ -19,13 +19,13 @@ when 'debian'
   default['ceph']['debian']['extras']['repository_key'] = 'https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc'
 when 'rhel'
   # Redhat/CentOS default repositories
-  default['ceph']['rhel']['stable']['repository'] = "#{node['ceph']['repo_url']}/rpm-#{node['ceph']['version']}/el6/x86_64/"
+  default['ceph']['rhel']['stable']['repository'] = "#{node['ceph']['repo_url']}/rpm-#{node['ceph']['version']}/el$releasever/x86_64/"
   default['ceph']['rhel']['stable']['repository_key'] = 'https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc'
-  default['ceph']['rhel']['testing']['repository'] = "#{node['ceph']['repo_url']}/rpm-testing/el6/x86_64/"
+  default['ceph']['rhel']['testing']['repository'] = "#{node['ceph']['repo_url']}/rpm-testing/el$releasever/x86_64/"
   default['ceph']['rhel']['testing']['repository_key'] = 'https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc'
   default['ceph']['rhel']['dev']['repository'] = "http://gitbuilder.ceph.com/ceph-rpm-centos6-x86_64-basic/ref/#{node['ceph']['version']}/x86_64/"
   default['ceph']['rhel']['dev']['repository_key'] = 'https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc'
-  default['ceph']['rhel']['extras']['repository'] = "#{node['ceph']['extras_repo_url']}/rpm/rhel6/x86_64/"
+  default['ceph']['rhel']['extras']['repository'] = "#{node['ceph']['extras_repo_url']}/rpm/rhel$releasever/x86_64/"
   default['ceph']['rhel']['extras']['repository_key'] = 'https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc'
 when 'fedora'
   # Fedora default repositories

@@ -97,7 +97,9 @@ else
     devices = Hash[(0...devices.size).zip devices] unless devices.kind_of? Hash
 
     devices.each do |index, osd_device|
-      unless osd_device['status'].nil?
+      status = osd_device['status']
+
+      if status == 'deployed'
         Log.info("osd: osd_device #{osd_device} has already been setup.")
         next
       end
@@ -110,10 +112,21 @@ else
       end
 
       dmcrypt = osd_device['encrypted'] == true ? '--dmcrypt' : ''
-      zap_disk = (osd_device['status'].eq? 'zap-disk') ? '--zap-disk' : ''
+      zap_disk = status == 'zap-disk' ? '--zap-disk' : ''
+      fstype = osd_device['fstype'] ? "--fs-type #{osd_device['fstype']}" : ''
+      journal = osd_device['journal']
+      if osd_device['fstype'] != 'btrfs' && journal.size == 0
+        Log.warn("#{osd_device['device']} defined as #{osd_device['fstype']} but no journal device defined")
+      end
+
+      Log.debug " ---- #{osd_device['device']} ----"
+      Log.debug "  dmcrypt: #{dmcrypt}"
+      Log.debug " zap_disk: #{zap_disk}"
+      Log.debug "   fstype: #{fstype}"
+      Log.debug "  journal: #{journal}"
 
       execute "ceph-disk-prepare on #{osd_device['device']}" do
-        command "ceph-disk-prepare #{dmcrypt} #{zap_disk} #{osd_device['device']} #{osd_device['journal']}"
+        command "ceph-disk-prepare #{dmcrypt} #{zap_disk} #{fstype} #{osd_device['device']} #{journal}"
         action :run
         notifies :create, "ruby_block[save osd_device status #{index}]", :immediately
       end
@@ -134,16 +147,27 @@ else
         action :nothing
       end
     end
-    service 'ceph_osd' do
-      case service_type
-      when 'upstart'
-        service_name 'ceph-osd-all-starter'
-        provider Chef::Provider::Service::Upstart
-      else
-        service_name 'ceph'
+
+    Dir.foreach("/var/lib/ceph/osd") do |osd|
+      next unless osd.match "ceph"
+      id = osd.split(/-/)[1]
+
+      service "ceph_osd" do
+        service_name "ceph-osd@#{id}"
+        action [:enable, :start]
+        supports :restart => true
+        only_if { node['platform_family'] == 'rhel' && node['platform_version'].to_f >= 7 }
       end
+      
+
+    end
+
+    service 'ceph_osd' do
+      service_name 'ceph-osd-all-starter'
+      provider Chef::Provider::Service::Upstart
       action [:enable, :start]
       supports :restart => true
+      only_if { service_type == 'upstart' }
     end
   else
     Log.info('node["ceph"]["osd_devices"] empty')

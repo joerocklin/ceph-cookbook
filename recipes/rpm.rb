@@ -13,6 +13,7 @@ end
 package 'yum-priorities'
 
 yum_repository 'ceph' do
+  description 'Ceph Packages' 
   baseurl node['ceph'][platform_family][branch]['repository']
   gpgkey node['ceph'][platform_family][branch]['repository_key']
   priority '10'
