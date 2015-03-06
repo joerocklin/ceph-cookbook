@@ -13,17 +13,27 @@ end
 package 'yum-priorities'
 
 yum_repository 'ceph' do
-  description 'Ceph Packages' 
+  description 'Ceph Packages'
   baseurl node['ceph'][platform_family][branch]['repository']
   gpgkey node['ceph'][platform_family][branch]['repository_key']
   priority '10'
 end
 
 yum_repository 'ceph-extra' do
+  description 'Ceph Extra Packages'
   baseurl node['ceph'][platform_family]['extras']['repository']
   gpgkey node['ceph'][platform_family]['extras']['repository_key']
   priority '10'
   only_if { node['ceph']['extras_repo'] }
+end
+
+yum_repository 'ceph-testing' do
+  description 'Ceph Testing Packages'
+  baseurl node['ceph'][platform_family]['testing']['repository']
+  gpgkey node['ceph'][platform_family]['testing']['repository_key']
+  priority '20'
+  enabled node['ceph']['testing_repo_enable']
+  only_if { node['ceph']['testing_repo'] }
 end
 
 package 'parted'    # needed by ceph-disk-prepare to run partprobe
