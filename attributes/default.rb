@@ -19,6 +19,8 @@ when 'rhel', 'fedora'
   packages = ['ceph']
   packages += debug_packages(packages) if node['ceph']['install_debug']
   default['ceph']['packages'] = packages
+
+  override['yum']['epel']['exclude'] = "python-ceph* python-rados* python-rbd*"
 else
   default['ceph']['packages'] = []
 end
