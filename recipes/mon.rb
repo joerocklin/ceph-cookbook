@@ -112,6 +112,14 @@ end
 # The key is going to be automatically created, We store it when it is created
 # If we're storing keys in encrypted data bags, then they've already been generated above
 if use_cephx? && !node['ceph']['encrypted_data_bags']
+
+  ceph_client 'bootstrap-osd' do
+    caps('osd' => 'allow *', 'mon' => 'allow rwx')
+    keyname 'client.bootstrap-osd'
+    filename "/var/lib/ceph/#{cluster}-bootstrap-osd.keyring"
+    not_if { osd_secret }
+  end
+
   ruby_block 'get osd-bootstrap keyring' do
     block do
       run_out = ''
