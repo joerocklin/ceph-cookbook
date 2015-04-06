@@ -19,6 +19,8 @@ node.default['ceph']['is_mon'] = true
 include_recipe 'ceph'
 include_recipe 'ceph::mon_install'
 
+include_recipe 'ceph::admin'
+
 service_type = node['ceph']['mon']['init_style']
 
 directory '/var/run/ceph' do
@@ -44,26 +46,36 @@ keyring = "#{Chef::Config[:file_cache_path]}/#{cluster}-#{node['hostname']}.mon.
 
 execute 'format mon-secret as keyring' do
   command lazy { "ceph-authtool '#{keyring}' --create-keyring --name=mon. --add-key='#{mon_secret}' --cap mon 'allow *'" }
-  creates "#{Chef::Config[:file_cache_path]}/#{cluster}-#{node['hostname']}.mon.keyring"
+  creates keyring
   only_if { mon_secret }
 end
 
-execute 'generate mon-secret as keyring' do
-  command "ceph-authtool '#{keyring}' --create-keyring --name=mon. --gen-key --cap mon 'allow *'"
-  creates "#{Chef::Config[:file_cache_path]}/#{cluster}-#{node['hostname']}.mon.keyring"
-  not_if { mon_secret }
-  notifies :create, 'ruby_block[save mon_secret]', :immediately
+if Chef::Config['solo']
+  fail 'You must set monitor secret when using chef-solo' unless mon_secret
+else
+  execute 'generate mon-secret as keyring' do
+    command "ceph-authtool '#{keyring}' --create-keyring --name=mon. --gen-key --cap mon 'allow *'"
+    creates keyring
+    not_if { mon_secret }
+    notifies :create, 'ruby_block[save mon_secret]', :immediately
+  end
+
+  ruby_block 'save mon_secret' do
+    block do
+      fetch = Mixlib::ShellOut.new("ceph-authtool '#{keyring}' --print-key --name=mon.")
+      fetch.run_command
+      key = fetch.stdout
+      node.set['ceph']['monitor-secret'] = key
+      node.save
+    end
+    action :nothing
+  end
 end
 
-ruby_block 'save mon_secret' do
-  block do
-    fetch = Mixlib::ShellOut.new("ceph-authtool '#{keyring}' --print-key --name=mon.")
-    fetch.run_command
-    key = fetch.stdout
-    node.set['ceph']['monitor-secret'] = key
-    node.save
-  end
-  action :nothing
+# This is how official guide suggests 
+# http://ceph.com/docs/master/install/manual-deployment/#monitor-bootstrapping
+execute 'add client.admin to monitors keyring' do
+  command lazy { "ceph-authtool '#{keyring}' --import-keyring /etc/ceph/ceph.client.admin.keyring" }
 end
 
 execute 'ceph-mon mkfs' do
@@ -109,27 +121,28 @@ mon_addresses.each do |addr|
   end
 end
 
-# The key is going to be automatically created, We store it when it is created
-# If we're storing keys in encrypted data bags, then they've already been generated above
-if use_cephx? && !node['ceph']['encrypted_data_bags']
-
-  ceph_client 'bootstrap-osd' do
-    caps('osd' => 'allow *', 'mon' => 'allow rwx')
-    keyname 'client.bootstrap-osd'
-    filename "/var/lib/ceph/#{cluster}-bootstrap-osd.keyring"
-    not_if { osd_secret }
-  end
-
-  ruby_block 'get osd-bootstrap keyring' do
-    block do
-      run_out = ''
-      while run_out.empty?
-        run_out = Mixlib::ShellOut.new('ceph auth get-key client.bootstrap-osd').run_command.stdout.strip
-        sleep 2
-      end
-      node.set['ceph']['bootstrap_osd_key'] = run_out
-      node.save
+unless Chef::Config['solo']
+  # The key is going to be automatically created, We store it when it is created
+  # If we're storing keys in encrypted data bags, then they've already been generated above
+  if use_cephx? && !node['ceph']['encrypted_data_bags']
+    ceph_client 'bootstrap-osd' do
+      caps('osd' => 'allow *', 'mon' => 'allow rwx')
+      keyname 'client.bootstrap-osd'
+      filename "/var/lib/ceph/#{cluster}-bootstrap-osd.keyring"
+      not_if { osd_secret }
     end
-    not_if { node['ceph']['bootstrap_osd_key'] }
+
+    ruby_block 'get osd-bootstrap keyring' do
+      block do
+        run_out = ''
+        while run_out.empty?
+          run_out = Mixlib::ShellOut.new('ceph --connect-timeout=5 auth get-key client.bootstrap-osd').run_command.stdout.strip
+          sleep 2
+        end      
+        node.set['ceph']['bootstrap_osd_key'] = run_out
+        node.save
+      end
+      not_if { node['ceph']['bootstrap_osd_key'] }
+    end
   end
 end

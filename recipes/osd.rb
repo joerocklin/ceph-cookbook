@@ -99,8 +99,16 @@ else
     devices.each do |index, osd_device|
       status = osd_device['status']
 
-      if status == 'deployed'
+      # lets check physical status of the device
+      prepared = system "ceph-disk list | grep #{osd_device['device']} | grep prepared -q"
+      if prepared
         Log.info("osd: osd_device #{osd_device} has already been setup.")
+        next
+      end
+
+      active = system "ceph-disk list | grep #{osd_device['device']} | grep active -q"
+      if active
+        Log.info("osd: osd_device #{osd_device} is already active.")
         next
       end
 
@@ -115,7 +123,7 @@ else
       zap_disk = status == 'zap-disk' ? '--zap-disk' : ''
       fstype = osd_device['fstype'] ? "--fs-type #{osd_device['fstype']}" : ''
       journal = osd_device['journal']
-      if osd_device['fstype'] != 'btrfs' && journal.size == 0
+      if osd_device['fstype'] != 'btrfs' && (journal.nil? || journal.size == 0)
         Log.warn("#{osd_device['device']} defined as #{osd_device['fstype']} but no journal device defined")
       end
 
@@ -125,26 +133,16 @@ else
       Log.debug "   fstype: #{fstype}"
       Log.debug "  journal: #{journal}"
 
+      fstype = node['ceph']['osd']['fs-type'] 
+      fstype = osd_device['fs-type'] if osd_device['fs-type']
+
       execute "ceph-disk-prepare on #{osd_device['device']}" do
         command "ceph-disk-prepare #{dmcrypt} #{zap_disk} #{fstype} #{osd_device['device']} #{journal}"
         action :run
-        notifies :create, "ruby_block[save osd_device status #{index}]", :immediately
       end
 
       execute "ceph-disk-activate #{osd_device['device']}" do
         only_if { osd_device['type'] == 'directory' }
-      end
-
-      # we add this status to the node env
-      # so that we can implement recreate
-      # and/or delete functionalities in the
-      # future.
-      ruby_block "save osd_device status #{index}" do
-        block do
-          node.normal['ceph']['osd_devices'][index]['status'] = 'deployed'
-          node.save
-        end
-        action :nothing
       end
     end
 
@@ -156,10 +154,8 @@ else
         service_name "ceph-osd@#{id}"
         action [:enable, :start]
         supports :restart => true
-        only_if { node['platform_family'] == 'rhel' && node['platform_version'].to_f >= 7 }
+        only_if { rhel? && node['platform_version'].to_f >= 7 }
       end
-      
-
     end
 
     service 'ceph_osd' do

@@ -27,12 +27,20 @@ def mon_env_search_string
 end
 
 def mon_nodes
-  search_string = mon_env_search_string
+  if Chef::Config['solo']
+    found = node['ceph']['mon_nodes']
+    found = [] if found.nil?
+    # add this node if it is a monitor as well
+    found << node if node['ceph']['is_mon']
+    return found
+  else
+    search_string = mon_env_search_string
 
-  if use_cephx? && !node['ceph']['encrypted_data_bags']
-    search_string = "(#{search_string}) AND (ceph_bootstrap_osd_key:*)"
+    if use_cephx? && !node['ceph']['encrypted_data_bags']
+      search_string = "(#{search_string}) AND (ceph_bootstrap_osd_key:*)"
+    end
+    search(:node, search_string)
   end
-  search(:node, search_string)
 end
 
 def osd_secret
@@ -136,6 +144,17 @@ def mon_secret
     node['ceph']['monitor-secret']
   else
     Chef::Log.info('No monitor secret found')
+    nil
+  end
+end
+
+def admin_secret
+  if node['ceph']['admin-secret']
+    node['ceph']['admin-secret']
+  elsif !mon_nodes.empty?
+    mon_nodes[0]['ceph']['admin-secret']  
+  else
+    Chef::Log.info('No admin secret found')
     nil
   end
 end
