@@ -12,6 +12,17 @@ end
 
 package 'yum-priorities'
 
+# Packaging by RHEL/CentOS/Fedora (and maybe others?) causes problems with the
+# using the Ceph repos. According to the issue in the Ceph tracking system below,
+# the solution is to inform the priorities config to not perform obsolete checks.
+#
+# see http://tracker.ceph.com/issues/10476
+replace_or_add 'Ignore obsoletes in yum priority checks' do
+  path '/etc/yum/pluginconf.d/priorities.conf'
+  pattern 'check_obsoletes=*'
+  line 'check_obsoletes=1'
+end
+
 yum_repository 'ceph' do
   description 'Ceph Packages'
   baseurl node['ceph'][platform_family][branch]['repository']
