@@ -123,7 +123,7 @@ else
       zap_disk = status == 'zap-disk' ? '--zap-disk' : ''
       fstype = osd_device['fstype'] ? "--fs-type #{osd_device['fstype']}" : ''
       journal = osd_device['journal']
-      if osd_device['fstype'] != 'btrfs' && journal.size == 0
+      if osd_device['fstype'] != 'btrfs' && (journal.nil? || journal.size == 0)
         Log.warn("#{osd_device['device']} defined as #{osd_device['fstype']} but no journal device defined")
       end
 
@@ -154,10 +154,8 @@ else
         service_name "ceph-osd@#{id}"
         action [:enable, :start]
         supports :restart => true
-        only_if { node['platform_family'] == 'rhel' && node['platform_version'].to_f >= 7 }
+        only_if { rhel? && node['platform_version'].to_f >= 7 }
       end
-      
-
     end
 
     service 'ceph_osd' do

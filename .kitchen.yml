@@ -31,11 +31,16 @@ suites:
     - "recipe[ceph::repo]"
     - "recipe[ceph]"
   attributes: &defaults
+    yum:
+      epel:
+        exclude: "python-ceph* python-rados* python-rbd*"
     ceph:
+      version: 'giant'
       config:
+        extras_repo: false
         fsid: ae3f1d03-bacd-4a90-b869-1a4fabb107f2
         mon_initial_members:
-          - "127.0.0.1"
+          - "10.0.2.15"
 - name: osd
   run_list:
     - "role[ceph-osd]"

@@ -129,7 +129,7 @@ unless Chef::Config['solo']
       block do
         run_out = ''
         while run_out.empty?
-          run_out = Mixlib::ShellOut.new('ceph auth get-key client.bootstrap-osd').run_command.stdout.strip
+          run_out = Mixlib::ShellOut.new('ceph --connect-timeout=5 auth get-key client.bootstrap-osd').run_command.stdout.strip
           sleep 2
         end      
         node.set['ceph']['bootstrap_osd_key'] = run_out
