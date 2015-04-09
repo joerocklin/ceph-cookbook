@@ -1,11 +1,12 @@
 include_recipe 'ceph'
+require 'chef/sugar/core_extensions'
 
 node['ceph']['osd']['packages'].each do |pck|
   package pck
 end
 
 # CentOS 7 has some extra work until ceph supports systemd from the RPMs
-if node['platform'] == 'centos' && node['platform_version'] == '7.0.1406'
+if rhel? && node['platform_version'].satisfies('~> 7.0')
   # Put the necessary systemd files in place
   cookbook_file '/etc/systemd/system/ceph-osd@.service' do
     mode  '0644'
