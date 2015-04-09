@@ -20,6 +20,10 @@ if rhel? && node['platform_version'].satisfies('~> 7.0')
     source 'ceph.target'
   end
 
+  service 'ceph.target' do
+    action :enable
+  end
+
   bash "move ceph initscript" do
     code <<-EOL
     systemctl disable ceph || true
