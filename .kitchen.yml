@@ -1,5 +1,13 @@
 ---
-driver_plugin: vagrant
+driver:
+  name: vagrant
+  network:
+    - ["forwarded_port", {guest: 80, host: 12345}]
+    - ["private_network", {ip: "192.168.42.100"}]
+
+provisioner:
+    name: chef_zero
+
 driver_config:
   vagrantfile_erb: test/integration/Vagrantfile.erb
   require_chef_omnibus: true
@@ -22,9 +30,6 @@ platforms:
 - name: centos-5.10
 - name: fedora-18
 
-provisioner:
-    name: chef_zero
-
 suites:
 - name: default
   run_list:
@@ -39,8 +44,6 @@ suites:
       config:
         extras_repo: false
         fsid: ae3f1d03-bacd-4a90-b869-1a4fabb107f2
-        mon_initial_members:
-          - "10.0.2.15"
 - name: osd
   run_list:
     - "role[ceph-osd]"
