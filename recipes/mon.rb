@@ -129,7 +129,6 @@ unless Chef::Config['solo']
       caps('osd' => 'allow *', 'mon' => 'allow rwx')
       keyname 'client.bootstrap-osd'
       filename "/var/lib/ceph/#{cluster}-bootstrap-osd.keyring"
-      not_if { osd_secret }
     end
 
     ruby_block 'get osd-bootstrap keyring' do
