@@ -121,7 +121,8 @@ else
 
       dmcrypt = osd_device['encrypted'] == true ? '--dmcrypt' : ''
       zap_disk = status == 'zap-disk' ? '--zap-disk' : ''
-      fstype = osd_device['fstype'] ? "--fs-type #{osd_device['fstype']}" : ''
+      osd_device['fstype'] = node['ceph']['osd']['fstype'] unless osd_device['fstype']
+      fstype = "--fs-type #{osd_device['fstype']}"
       journal = osd_device['journal']
       if osd_device['fstype'] != 'btrfs' && (journal.nil? || journal.size == 0)
         Log.warn("#{osd_device['device']} defined as #{osd_device['fstype']} but no journal device defined")
@@ -132,9 +133,6 @@ else
       Log.debug " zap_disk: #{zap_disk}"
       Log.debug "   fstype: #{fstype}"
       Log.debug "  journal: #{journal}"
-
-      fstype = node['ceph']['osd']['fs-type'] 
-      fstype = osd_device['fs-type'] if osd_device['fs-type']
 
       execute "ceph-disk-prepare on #{osd_device['device']}" do
         command "ceph-disk-prepare #{dmcrypt} #{zap_disk} #{fstype} #{osd_device['device']} #{journal}"

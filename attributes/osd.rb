@@ -5,7 +5,7 @@ default['ceph']['osd']['init_style'] = node['ceph']['init_style']
 default['ceph']['osd']['secret_file'] = '/etc/chef/secrets/ceph_osd'
 
 # default filesystem for osd, can be overriden individually
-default['ceph']['osd']['fs-type'] = 'ext4'
+default['ceph']['osd']['fstype'] = 'xfs'
 
 case node['platform_family']
 when 'debian', 'rhel', 'fedora'
